@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum DeploymentStatus {
+  QUEUED
+  BUILDING
+  DEPLOYING
+  RUNNING
+  FAILED
+  CANCELLED
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         Role       @default(USER)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model Project {
+  id                   String                @id @default(cuid())
+  name                 String
+  slug                 String                @unique
+  description          String?
+  repositoryUrl        String
+  branch               String                @default("main")
+  runtime              String                @default("nodejs")
+  status               String                @default("STOPPED")
+  containerId          String?
+  containerName        String?
+  containerPort        Int                   @default(3000)
+  publicPort           Int?
+  domain               String?
+  cpuLimit             Float                 @default(0.5)
+  memoryLimit          Int                   @default(512)
+  autoDeploy           Boolean               @default(true)
+  webhookSecret        String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  deployments          Deployment[]
+  environmentVariables EnvironmentVariable[]
+  domains              Domain[]
+
+  @@map("projects")
+}
+
+model Deployment {
+  id            String           @id @default(cuid())
+  projectId     String
+  commitHash    String?
+  commitMessage String?
+  status        DeploymentStatus @default(QUEUED)
+  trigger       String           @default("MANUAL")
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  buildLog      String?          @db.Text
+  errorMessage  String?          @db.Text
+  createdAt     DateTime         @default(now())
+  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+  @@map("deployments")
+}
+
+model EnvironmentVariable {
+  id             String   @id @default(cuid())
+  projectId      String
+  key            String
+  encryptedValue String   @db.Text
+  isSecret       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, key])
+  @@map("environment_variables")
+}
+
+model Domain {
+  id        String   @id @default(cuid())
+  projectId String
+  hostname  String   @unique
+  status    String   @default("PENDING")
+  sslStatus String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("domains")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  metadata   String?  @db.Text
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([resource, resourceId])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
