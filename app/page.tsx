@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   try {
     const userCount = await prisma.user.count();
@@ -15,8 +17,8 @@ export default async function HomePage() {
     }
 
     redirect("/dashboard");
-  } catch (error) {
-    // If DB is unreachable during initial load, fallback to login
+  } catch {
+    // If DB is unreachable or during initial setup
     redirect("/login");
   }
 }
