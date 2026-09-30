@@ -33,8 +33,8 @@ export async function buildDockerImage({
 
   return new Promise((resolve, reject) => {
     docker.buildImage(
-      tarStream,
-      { t: imageTag, remove: true },
+      tarStream as any,
+      { t: imageTag, rm: true },
       (err, stream) => {
         if (err) {
           onLog(`[Builder Error] ${err.message}`);

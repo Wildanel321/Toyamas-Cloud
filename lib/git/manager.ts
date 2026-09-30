@@ -1,6 +1,4 @@
-import simpleGit, { SimpleGit } from "simple-git";
-import path from "path";
-import fs from "fs-extra"; // or standard fs
+import { simpleGit, SimpleGit } from "simple-git";
 import fsPromises from "fs/promises";
 
 export interface CloneResult {

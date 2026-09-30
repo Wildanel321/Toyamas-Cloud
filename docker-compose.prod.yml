@@ -1,0 +1,88 @@
+services:
+  toyamas-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: toyamas-control-plane
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      APP_URL: https://wildanstore.my.id
+      BASE_DOMAIN: wildanstore.my.id
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      DATABASE_URL: postgresql://toyamas:${POSTGRES_PASSWORD:-toyamas_secret}@postgres:5432/toyamas_cloud?schema=public
+      REDIS_URL: redis://redis:6379
+      DOCKER_SOCKET_PATH: /var/run/docker.sock
+      CADDY_ADMIN_API: http://caddy:2019
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - toyamas_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - toyamas-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: toyamas-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: toyamas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toyamas_secret}
+      POSTGRES_DB: toyamas_cloud
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U toyamas -d toyamas_cloud"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - toyamas-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: toyamas-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - toyamas-network
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: toyamas-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./storage/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - toyamas-app
+    networks:
+      - toyamas-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  toyamas_storage:
+  caddy_data:
+  caddy_config:
+
+networks:
+  toyamas-network:
+    external: true

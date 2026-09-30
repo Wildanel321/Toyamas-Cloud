@@ -1,6 +1,5 @@
 import { getDockerClient } from "./client";
 import { ensureToyamasNetwork, TOYAMAS_DOCKER_NETWORK } from "./network";
-import Docker from "dockerode";
 
 export interface CreateContainerOptions {
   imageName: string;
@@ -63,7 +62,7 @@ export async function createAndStartContainer(
     },
     HostConfig: {
       Memory: memoryBytes,
-      NanoCPUs: nanoCpus,
+      NanoCpus: nanoCpus,
       PidsLimit: 200,
       RestartPolicy: {
         Name: "unless-stopped",
@@ -148,7 +147,6 @@ export async function getContainerStats(
   const container = docker.getContainer(containerId);
 
   try {
-    // Get single stream stats
     const statsStream = (await container.stats({ stream: false })) as unknown as {
       cpu_stats: {
         cpu_usage: { total_usage: number };
